@@ -21,3 +21,5 @@ Idk why, I just thought it'd be cool to make a public Discord bot
 
 PRs are always welcome. I'm new to async python, and discord.py, so my code
 could prolly use some improving or suggestions
+
+Yes, we use branch main btw 😎
