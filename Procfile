@@ -1,2 +1,2 @@
-worker: python octobot.py
+worker: python gitbot.py
 

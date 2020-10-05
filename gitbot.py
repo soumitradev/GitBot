@@ -6,13 +6,13 @@ import discord
 import requests
 from discord.ext import commands
 
-octobot_prefix = 'gh!'
+gitbot_prefix = 'gh!'
 description = """
 Hi There! I'm a bot written to provide some GitHub utilities on Discord.
 """
 zwsp = "​"
 gh_api_header = {"Accept": "application/vnd.github.v3+json"}
-octobot = commands.Bot(command_prefix=octobot_prefix, description=description)
+gitbot = commands.Bot(command_prefix=gitbot_prefix, description=description)
 
 
 # Helper funcs
@@ -25,19 +25,19 @@ async def format_time(in_str_time):
 
 # Discord funcs
 
-@octobot.event
+@gitbot.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(octobot))
+    print('We have logged in as {0.user}'.format(gitbot))
 
 
-@octobot.event
+@gitbot.event
 async def on_message(message):
-    if message.author == octobot.user:
+    if message.author == gitbot.user:
         return
-    await octobot.process_commands(message)
+    await gitbot.process_commands(message)
 
 
-@octobot.command()
+@gitbot.command()
 async def repo(ctx, owner_user, repo_name):
     url = "https://api.github.com/repos/{0}/{1}".format(owner_user, repo_name)
     res = requests.get(url, headers=gh_api_header)
@@ -157,7 +157,7 @@ async def repo(ctx, owner_user, repo_name):
     await ctx.send(embed=res_embed)
 
 
-@octobot.command()
+@gitbot.command()
 async def user(ctx, username):
     url = "https://api.github.com/users/{0}".format(username)
     res = requests.get(url, headers=gh_api_header)
@@ -246,5 +246,5 @@ async def user(ctx, username):
     await ctx.send(embed=res_embed)
 
 
-USER = os.getenv('OCTOBOT_DISCORD_KEY')
-octobot.run(USER)
+USER = os.getenv('GITBOT_DISCORD_KEY')
+gitbot.run(USER)
