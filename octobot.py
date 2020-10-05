@@ -83,7 +83,7 @@ async def repo(ctx, owner_user, repo_name):
 
         res_embed.add_field(name="Forks",
                             value="[{0}]({1})".format(
-                                data["network_count"],
+                                data["forks"],
                                 data['html_url'] + "/network/members")
                             )
 
@@ -105,6 +105,31 @@ async def repo(ctx, owner_user, repo_name):
                 (", ".join(contributors[:2]) + ", and {0} others".format(
                     len(contributors) - 2)
                  )
+            )
+
+        if data['fork']:
+            res_embed.add_field(
+                name="Fork",
+                value="This repo is a fork of {0}".format(
+                    data['parent']['full_name']
+                ),
+                inline=False
+            )
+
+            res_embed.add_field(
+                name="Parent",
+                value="[{0}]({1})".format(
+                    data['parent']['full_name'],
+                    data['parent']['html_url']
+                )
+            )
+
+            res_embed.add_field(
+                name="Source",
+                value="[{0}]({1})".format(
+                    data['source']['full_name'],
+                    data['source']['html_url']
+                )
             )
 
         res_embed.add_field(name="Clone URL", value="`{0}`".format(
