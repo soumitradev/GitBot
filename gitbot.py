@@ -94,17 +94,26 @@ async def repo(ctx, owner_user, repo_name):
                                 data['default_branch'])
                             )
 
-        contributors = ["[{0}]({1})".format(x['login'], "https://github.com/" +
-                                            x['login']) for x in requests.get(
-            data['contributors_url'], headers=gh_api_header).json()]
+        contri_res = requests.get(
+            data['contributors_url'], headers=gh_api_header)
 
-        if contributors:
+        if contri_res.status_code == 200:
+            contributors = ["[{0}]({1})".format(x['login'], "https://github.com/" +
+                                                x['login']) for x in contri_res.json()]
+
+            if contributors:
+                res_embed.add_field(
+                    name="Contributor" +
+                    ("s" if len(contributors) > 1 else ""),
+                    value=" and ".join(contributors) if len(contributors) <= 2 else
+                    (", ".join(contributors[:2]) + ", and {0} others".format(
+                        len(contributors) - 2)
+                     )
+                )
+        elif contri_res.status_code == 403:
             res_embed.add_field(
-                name="Contributor" + ("s" if len(contributors) > 1 else ""),
-                value=" and ".join(contributors) if len(contributors) <= 2 else
-                (", ".join(contributors[:2]) + ", and {0} others".format(
-                    len(contributors) - 2)
-                 )
+                name="Contributors",
+                value="Too many to show"
             )
 
         if data['fork']:
