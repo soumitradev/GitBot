@@ -6,7 +6,7 @@ import discord
 import requests
 from discord.ext import commands
 
-octobot_prefix = '^'
+octobot_prefix = 'gh!'
 description = """
 Hi There! I'm a bot written to provide some GitHub utilities on Discord.
 """
