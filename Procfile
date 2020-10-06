@@ -1,2 +1,2 @@
-worker: python gitbot.py
+worker: python src/gitbot.py
 

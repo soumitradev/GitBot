@@ -6,6 +6,8 @@ import discord
 import requests
 from discord.ext import commands
 
+import help
+
 gitbot_prefix = 'gh!'
 description = """
 Hi There! I'm a bot written to provide some GitHub utilities on Discord.
@@ -17,7 +19,11 @@ GH_USER = os.getenv('GITBOT_GITHUB_USER')
 GH_ACCESS_TOKEN = os.getenv('GITBOT_GITHUB_TOKEN')
 gitbot_auth = requests.auth.HTTPBasicAuth(GH_USER, GH_ACCESS_TOKEN)
 
-gitbot = commands.Bot(command_prefix=gitbot_prefix, description=description)
+gitbot = commands.Bot(
+    command_prefix=gitbot_prefix,
+    description=description,
+    help_command=help.CustomHelpCommand()
+)
 
 
 # Helper funcs
@@ -44,6 +50,10 @@ async def on_message(message):
 
 @gitbot.command()
 async def repo(ctx, owner_user, repo_name):
+    """
+    Returns information about `repo_name` owned by `owner_user`
+    """
+
     url = "https://api.github.com/repos/{0}/{1}".format(owner_user, repo_name)
     res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
     if res.status_code == 200:
@@ -173,6 +183,10 @@ async def repo(ctx, owner_user, repo_name):
 
 @gitbot.command()
 async def user(ctx, username):
+    """
+    Returns information about GitHub user `username`
+    """
+
     url = "https://api.github.com/users/{0}".format(username)
     res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
     if res.status_code == 200:
