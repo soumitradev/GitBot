@@ -12,6 +12,11 @@ Hi There! I'm a bot written to provide some GitHub utilities on Discord.
 """
 zwsp = "​"
 gh_api_header = {"Accept": "application/vnd.github.v3+json"}
+
+GH_USER = os.getenv('GITBOT_GITHUB_USER')
+GH_ACCESS_TOKEN = os.getenv('GITBOT_GITHUB_TOKEN')
+gitbot_auth = requests.auth.HTTPBasicAuth(GH_USER, GH_ACCESS_TOKEN)
+
 gitbot = commands.Bot(command_prefix=gitbot_prefix, description=description)
 
 
@@ -40,7 +45,7 @@ async def on_message(message):
 @gitbot.command()
 async def repo(ctx, owner_user, repo_name):
     url = "https://api.github.com/repos/{0}/{1}".format(owner_user, repo_name)
-    res = requests.get(url, headers=gh_api_header)
+    res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
     if res.status_code == 200:
         data = res.json()
         res_embed = discord.Embed(
@@ -95,7 +100,7 @@ async def repo(ctx, owner_user, repo_name):
                             )
 
         contri_res = requests.get(
-            data['contributors_url'], headers=gh_api_header)
+            data['contributors_url'], headers=gh_api_header, auth=gitbot_auth)
 
         if contri_res.status_code == 200:
             contributors = ["[{0}]({1})".format(x['login'], "https://github.com/" +
@@ -169,7 +174,7 @@ async def repo(ctx, owner_user, repo_name):
 @gitbot.command()
 async def user(ctx, username):
     url = "https://api.github.com/users/{0}".format(username)
-    res = requests.get(url, headers=gh_api_header)
+    res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
     if res.status_code == 200:
         data = res.json()
         res_embed = discord.Embed(
@@ -214,7 +219,10 @@ async def user(ctx, username):
 
         orgs = ["[{0}]({1})".format(x['login'], "https://github.com/" +
                                     x['login']) for x in requests.get(
-            data['organizations_url'], headers=gh_api_header).json()]
+                                        data['organizations_url'],
+                                        headers=gh_api_header,
+                                        auth=gitbot_auth
+        ).json()]
 
         if orgs:
             res_embed.add_field(
