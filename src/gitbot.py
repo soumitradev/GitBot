@@ -1,5 +1,7 @@
 import datetime
+import asyncio
 import json
+import math
 import os
 
 import discord
@@ -179,6 +181,98 @@ async def repo(ctx, owner_user, repo_name):
         )
 
     await ctx.send(embed=res_embed)
+
+
+@gitbot.command()
+async def followers(ctx, username):
+    """
+    Returns followers of GitHub user `username`
+    """
+    async def get_page(n):
+        params = {
+            "page": n,
+            "per_page": 20
+        }
+        res = requests.get(
+            url,
+            params=params,
+            headers=gh_api_header,
+            auth=gitbot_auth
+        )
+
+        if res.status_code == 200:
+            data = res.json()
+            res_embed = discord.Embed(
+                title="Followers of {0}".format(name),
+                url=user_data['html_url']
+            )
+
+            res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
+
+            for i in data:
+                res_embed.add_field(
+                    name=i['login'],
+                    value=i['html_url'],
+                    inline=False
+                )
+
+            success = True
+
+        elif res.status_code == 404:
+            res_embed = discord.Embed(
+                title="User not found",
+                description="User `{0}` was not found.".format(username),
+                color=0xFF0000
+            )
+            success = False
+        return res_embed, success
+
+    parent_res = requests.get(
+        "https://api.github.com/users/{0}".format(username),
+        headers=gh_api_header,
+        auth=gitbot_auth
+    )
+    user_data = parent_res.json()
+    total_followers = user_data['followers']
+    name = user_data['name'] if user_data['name'] else user_data['login']
+    total_pages = math.ceil(total_followers / 20)
+    url = "https://api.github.com/users/{0}/followers".format(username)
+    res_embed, exit_code = await get_page(1)
+    msg = await ctx.send(embed=res_embed)
+    if not exit_code:
+        return
+    await msg.add_reaction("⬅️")
+    await msg.add_reaction("◀️")
+    await msg.add_reaction("▶️")
+    await msg.add_reaction("➡️")
+    current_page = 1
+
+    while current_page in range(1, total_pages + 1):
+        try:
+            reaction, _user = await gitbot.wait_for(
+                'reaction_add',
+                timeout=60,
+                check=lambda reaction, user: str(reaction.emoji) in [
+                    "◀️", "▶️", "⬅️", "➡️"] and user.id == ctx.author.id
+            )
+        except asyncio.TimeoutError:
+            timeup_embed = msg.embeds[0]
+            timeup_embed.set_footer(text="No longer accepting input")
+            timeup_embed.color = 0xFF0000
+            await msg.edit(embed=timeup_embed)
+            break
+        else:
+            if str(reaction.emoji) == "◀️":
+                current_page -= 1
+            elif str(reaction.emoji) == "▶️":
+                current_page += 1
+            elif str(reaction.emoji) == "⬅️":
+                current_page = 1
+            elif str(reaction.emoji) == "➡️":
+                current_page = total_pages
+            current_page = min(max(1, current_page), total_pages)
+            new_embed, exit_code = await get_page(current_page)
+            await msg.edit(embed=new_embed)
 
 
 @gitbot.command()

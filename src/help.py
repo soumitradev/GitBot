@@ -32,16 +32,13 @@ class CustomHelpCommand(commands.HelpCommand):
         embed = discord.Embed(
             title="Help"
         )
-        mapping = mapping.items()
-        for stuff in mapping:
-            for command_list in stuff:
-                if command_list:
-                    for command in command_list:
-                        embed.add_field(
-                            name=command.name,
-                            value=command.help,
-                            inline=False
-                        )
+        mapping = mapping[None]
+        for command in mapping:
+            embed.add_field(
+                name=command.name,
+                value=command.help,
+                inline=False
+            )
 
         return await self.context.send(embed=embed)
 
