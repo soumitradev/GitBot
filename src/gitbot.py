@@ -204,7 +204,7 @@ async def followers(ctx, username):
             data = res.json()
             res_embed = discord.Embed(
                 title="Followers of {0}".format(name),
-                url=user_data['html_url'] + "/followers"
+                url=user_data['html_url'] + "?tab=followers"
             )
 
             res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
@@ -212,7 +212,7 @@ async def followers(ctx, username):
             for i in data:
                 res_embed.add_field(
                     name=i['login'],
-                    value="[Profile Link]({0})".format(i['html_url'])
+                    value="[Profile]({0})".format(i['html_url'])
                 )
 
             success = True
@@ -235,7 +235,7 @@ async def followers(ctx, username):
     total_followers = user_data['followers']
     name = user_data['name'] if user_data['name'] else user_data['login']
     total_pages = math.ceil(total_followers / 21)
-    url = "https://api.github.com/users/{0}?tab=followers".format(username)
+    url = "https://api.github.com/users/{0}/followers".format(username)
     res_embed, exit_code = await get_page(1)
     msg = await ctx.send(embed=res_embed)
     if not exit_code:
