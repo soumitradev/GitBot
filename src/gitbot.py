@@ -234,7 +234,7 @@ async def followers(ctx, username):
     user_data = parent_res.json()
     total_followers = user_data['followers']
     name = user_data['name'] if user_data['name'] else user_data['login']
-    total_pages = math.ceil(total_followers / 20)
+    total_pages = math.ceil(total_followers / 21)
     url = "https://api.github.com/users/{0}/followers".format(username)
     res_embed, exit_code = await get_page(1)
     msg = await ctx.send(embed=res_embed)
