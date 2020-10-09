@@ -191,7 +191,7 @@ async def followers(ctx, username):
     async def get_page(n):
         params = {
             "page": n,
-            "per_page": 20
+            "per_page": 21
         }
         res = requests.get(
             url,
@@ -204,7 +204,7 @@ async def followers(ctx, username):
             data = res.json()
             res_embed = discord.Embed(
                 title="Followers of {0}".format(name),
-                url=user_data['html_url']
+                url=user_data['html_url'] + "/followers"
             )
 
             res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
@@ -212,8 +212,7 @@ async def followers(ctx, username):
             for i in data:
                 res_embed.add_field(
                     name=i['login'],
-                    value=i['html_url'],
-                    inline=False
+                    value="[Profile Link]({0})".format(i['html_url'])
                 )
 
             success = True
@@ -241,10 +240,10 @@ async def followers(ctx, username):
     msg = await ctx.send(embed=res_embed)
     if not exit_code:
         return
-    await msg.add_reaction("⬅️")
+    await msg.add_reaction("⏮️")
     await msg.add_reaction("◀️")
     await msg.add_reaction("▶️")
-    await msg.add_reaction("➡️")
+    await msg.add_reaction("⏭️")
     current_page = 1
 
     while current_page in range(1, total_pages + 1):
@@ -253,7 +252,7 @@ async def followers(ctx, username):
                 'reaction_add',
                 timeout=60,
                 check=lambda reaction, user: str(reaction.emoji) in [
-                    "◀️", "▶️", "⬅️", "➡️"] and user.id == ctx.author.id
+                    "◀️", "▶️", "⏭️", "⏮️"] and user.id == ctx.author.id
             )
         except asyncio.TimeoutError:
             timeup_embed = msg.embeds[0]
@@ -266,9 +265,9 @@ async def followers(ctx, username):
                 current_page -= 1
             elif str(reaction.emoji) == "▶️":
                 current_page += 1
-            elif str(reaction.emoji) == "⬅️":
+            elif str(reaction.emoji) == "⏮️":
                 current_page = 1
-            elif str(reaction.emoji) == "➡️":
+            elif str(reaction.emoji) == "⏭️":
                 current_page = total_pages
             current_page = min(max(1, current_page), total_pages)
             new_embed, exit_code = await get_page(current_page)
