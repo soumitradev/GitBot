@@ -33,7 +33,7 @@ gitbot = commands.Bot(
 async def format_time(in_str_time):
     return datetime.datetime.strptime(
         in_str_time, "%Y-%m-%dT%H:%M:%SZ"
-    ).strftime("%dᵗʰ %b '%y %H:%M")
+    ).strftime("%d %b '%y %H:%M")
 
 
 # Discord funcs
