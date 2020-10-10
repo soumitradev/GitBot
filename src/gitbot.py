@@ -56,6 +56,13 @@ async def repo(ctx, owner_user, repo_name):
     Returns information about `repo_name` owned by `owner_user`
     """
 
+    def get_formatted_size(size):
+        if size < 1000:
+            return "{0}K".format(size)
+        elif size < 1000000:
+            return "{0}M".format(round(size/1000, 2))
+        return "{0}G".format(round(size/1000000, 2))
+
     url = "https://api.github.com/repos/{0}/{1}".format(owner_user, repo_name)
     res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
     if res.status_code == 200:
@@ -102,6 +109,10 @@ async def repo(ctx, owner_user, repo_name):
                             value="[{0}]({1})".format(
                                 data["forks"],
                                 data['html_url'] + "/network/members")
+                            )
+
+        res_embed.add_field(name="Repo Size",
+                            value=get_formatted_size(data['size'])
                             )
 
         res_embed.add_field(name="Default Branch",
