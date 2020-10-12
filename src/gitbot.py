@@ -195,14 +195,22 @@ async def repo(ctx, owner_user, repo_name):
 
 
 @gitbot.command()
-async def following(ctx, username):
+async def repos(ctx, username):
     """
-    Returns the users `username` follows
+    Returns the repos `username` owns
     """
+
+    def get_formatted_size(size):
+        if size < 1000:
+            return "{0}K".format(size)
+        elif size < 1000000:
+            return "{0}M".format(round(size/1000, 2))
+        return "{0}G".format(round(size/1000000, 2))
+
     async def get_page(n):
         params = {
             "page": n,
-            "per_page": 21
+            "per_page": 6
         }
         res = requests.get(
             url,
@@ -211,52 +219,57 @@ async def following(ctx, username):
             auth=gitbot_auth
         )
 
-        if res.status_code == 200:
-            data = res.json()
-            res_embed = discord.Embed(
-                title="Users {0} follows".format(name),
-                url=user_data['html_url'] + "?tab=following"
+        data = res.json()
+        res_embed = discord.Embed(
+            title="Repos {0} owns".format(name),
+            url=user_data['html_url'] + "?tab=repositories"
+        )
+
+        res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
+
+        for i in data:
+            res_embed.add_field(
+                name=zwsp,
+                value="**[{0}]({1})**\n{2}\n**Language**\n"
+                "{3}\n**Size**\n{4}".format(
+                    i['name'],
+                    i['html_url'],
+                    i['description'],
+                    "Unknown" if not i['language'] else i['language'],
+                    get_formatted_size(i['size'])
+                )
             )
 
-            res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
-
-            for i in data:
-                res_embed.add_field(
-                    name=i['login'],
-                    value="[Profile]({0})".format(i['html_url'])
-                )
-
-            if not data:
-                res_embed.add_field(
-                    name="None",
-                    value="{0} doesn't follow anyone".format(name)
-                )
-
-            success = True
-
-        elif res.status_code == 404:
-            res_embed = discord.Embed(
-                title="User not found",
-                description="User `{0}` was not found.".format(username),
-                color=0xFF0000
+        if not data:
+            res_embed.add_field(
+                name="None",
+                value="{0} doesn't own any repos".format(name)
             )
-            success = False
 
-        return res_embed, success
+        return res_embed
 
     parent_res = requests.get(
         "https://api.github.com/users/{0}".format(username),
         headers=gh_api_header,
         auth=gitbot_auth
     )
+
+    if parent_res.status_code == 404:
+        res_embed = discord.Embed(
+            title="User not found",
+            description="User `{0}` was not found.".format(username),
+            color=0xFF0000
+        )
+        return await ctx.send(embed=res_embed)
+
     user_data = parent_res.json()
-    total_followers = user_data['following']
+    total_repos = user_data['public_repos']
     name = user_data['name'] if user_data['name'] else user_data['login']
-    total_pages = max(1, math.ceil(total_followers / 21))
-    url = "https://api.github.com/users/{0}/following".format(username)
-    res_embed, exit_code = await get_page(1)
+    total_pages = max(1, math.ceil(total_repos / 6))
+    url = "https://api.github.com/users/{0}/repos".format(username)
+    res_embed = await get_page(1)
     msg = await ctx.send(embed=res_embed)
-    if not exit_code or total_pages == 1:
+    if total_pages == 1:
         return
     await msg.add_reaction("⏮️")
     await msg.add_reaction("◀️")
@@ -288,7 +301,103 @@ async def following(ctx, username):
             elif str(reaction.emoji) == "⏭️":
                 current_page = total_pages
             current_page = min(max(1, current_page), total_pages)
-            new_embed, exit_code = await get_page(current_page)
+            new_embed = await get_page(current_page)
+            await msg.edit(embed=new_embed)
+
+
+@gitbot.command()
+async def following(ctx, username):
+    """
+    Returns the users `username` follows
+    """
+    async def get_page(n):
+        params = {
+            "page": n,
+            "per_page": 21
+        }
+        res = requests.get(
+            url,
+            params=params,
+            headers=gh_api_header,
+            auth=gitbot_auth
+        )
+
+        data = res.json()
+        res_embed = discord.Embed(
+            title="Users {0} follows".format(name),
+            url=user_data['html_url'] + "?tab=following"
+        )
+
+        res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
+
+        for i in data:
+            res_embed.add_field(
+                name=i['login'],
+                value="[Profile]({0})".format(i['html_url'])
+            )
+
+        if not data:
+            res_embed.add_field(
+                name="None",
+                value="{0} doesn't follow anyone".format(name)
+            )
+
+        return res_embed
+
+    parent_res = requests.get(
+        "https://api.github.com/users/{0}".format(username),
+        headers=gh_api_header,
+        auth=gitbot_auth
+    )
+
+    if parent_res.status_code == 404:
+        res_embed = discord.Embed(
+            title="User not found",
+            description="User `{0}` was not found.".format(username),
+            color=0xFF0000
+        )
+        return await ctx.send(embed=res_embed)
+
+    user_data = parent_res.json()
+    total_followers = user_data['following']
+    name = user_data['name'] if user_data['name'] else user_data['login']
+    total_pages = max(1, math.ceil(total_followers / 21))
+    url = "https://api.github.com/users/{0}/following".format(username)
+    res_embed = await get_page(1)
+    msg = await ctx.send(embed=res_embed)
+    if total_pages == 1:
+        return
+    await msg.add_reaction("⏮️")
+    await msg.add_reaction("◀️")
+    await msg.add_reaction("▶️")
+    await msg.add_reaction("⏭️")
+    current_page = 1
+
+    while current_page in range(1, total_pages + 1):
+        try:
+            reaction, _user = await gitbot.wait_for(
+                'reaction_add',
+                timeout=60,
+                check=lambda reaction, user: str(reaction.emoji) in [
+                    "◀️", "▶️", "⏭️", "⏮️"] and user.id == ctx.author.id
+            )
+        except asyncio.TimeoutError:
+            timeup_embed = msg.embeds[0]
+            timeup_embed.set_footer(text="No longer accepting input")
+            timeup_embed.color = 0xFF0000
+            await msg.edit(embed=timeup_embed)
+            break
+        else:
+            if str(reaction.emoji) == "◀️":
+                current_page -= 1
+            elif str(reaction.emoji) == "▶️":
+                current_page += 1
+            elif str(reaction.emoji) == "⏮️":
+                current_page = 1
+            elif str(reaction.emoji) == "⏭️":
+                current_page = total_pages
+            current_page = min(max(1, current_page), total_pages)
+            new_embed = await get_page(current_page)
             await msg.edit(embed=new_embed)
 
 
@@ -309,51 +418,50 @@ async def followers(ctx, username):
             auth=gitbot_auth
         )
 
-        if res.status_code == 200:
-            data = res.json()
-            res_embed = discord.Embed(
-                title="Followers of {0}".format(name),
-                url=user_data['html_url'] + "?tab=followers"
+        data = res.json()
+        res_embed = discord.Embed(
+            title="Followers of {0}".format(name),
+            url=user_data['html_url'] + "?tab=followers"
+        )
+
+        res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
+
+        for i in data:
+            res_embed.add_field(
+                name=i['login'],
+                value="[Profile]({0})".format(i['html_url'])
             )
 
-            res_embed.set_footer(text="Page {0} of {1}".format(n, total_pages))
-
-            for i in data:
-                res_embed.add_field(
-                    name=i['login'],
-                    value="[Profile]({0})".format(i['html_url'])
-                )
-
-            if not data:
-                res_embed.add_field(
-                    name="None",
-                    value="{0} doesn't follow anyone".format(name)
-                )
-
-            success = True
-
-        elif res.status_code == 404:
-            res_embed = discord.Embed(
-                title="User not found",
-                description="User `{0}` was not found.".format(username),
-                color=0xFF0000
+        if not data:
+            res_embed.add_field(
+                name="None",
+                value="{0} doesn't follow anyone".format(name)
             )
-            success = False
-        return res_embed, success
+
+        return res_embed
 
     parent_res = requests.get(
         "https://api.github.com/users/{0}".format(username),
         headers=gh_api_header,
         auth=gitbot_auth
     )
+
+    if parent_res.status_code == 404:
+        res_embed = discord.Embed(
+            title="User not found",
+            description="User `{0}` was not found.".format(username),
+            color=0xFF0000
+        )
+        return await ctx.send(embed=res_embed)
+
     user_data = parent_res.json()
     total_followers = user_data['followers']
     name = user_data['name'] if user_data['name'] else user_data['login']
     total_pages = max(1, math.ceil(total_followers / 21))
     url = "https://api.github.com/users/{0}/followers".format(username)
-    res_embed, exit_code = await get_page(1)
+    res_embed = await get_page(1)
     msg = await ctx.send(embed=res_embed)
-    if not exit_code or total_pages == 1:
+    if total_pages == 1:
         return
     await msg.add_reaction("⏮️")
     await msg.add_reaction("◀️")
@@ -385,7 +493,7 @@ async def followers(ctx, username):
             elif str(reaction.emoji) == "⏭️":
                 current_page = total_pages
             current_page = min(max(1, current_page), total_pages)
-            new_embed, exit_code = await get_page(current_page)
+            new_embed = await get_page(current_page)
             await msg.edit(embed=new_embed)
 
 
