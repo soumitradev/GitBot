@@ -30,13 +30,24 @@ gitbot = commands.Bot(
 
 # Helper funcs
 
-async def format_time(in_str_time):
+def format_time(in_str_time):
     return datetime.datetime.strptime(
         in_str_time, "%Y-%m-%dT%H:%M:%SZ"
     ).strftime("%d %b '%y %H:%M")
 
 
+def get_formatted_size(size, base):
+    size *= base
+    size_suffixes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
+
+    count = 0
+    while size >= 1000:
+        count += 1
+        size /= 1000
+    return str(round(size, 2)) + " " + size_suffixes[count]
+
 # Discord funcs
+
 
 @gitbot.event
 async def on_ready():
@@ -55,13 +66,6 @@ async def repo(ctx, owner_user, repo_name):
     """
     Returns information about `repo_name` owned by `owner_user`
     """
-
-    def get_formatted_size(size):
-        if size < 1000:
-            return "{0}K".format(size)
-        elif size < 1000000:
-            return "{0}M".format(round(size/1000, 2))
-        return "{0}G".format(round(size/1000000, 2))
 
     url = "https://api.github.com/repos/{0}/{1}".format(owner_user, repo_name)
     res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
@@ -112,7 +116,7 @@ async def repo(ctx, owner_user, repo_name):
                             )
 
         res_embed.add_field(name="Repo Size",
-                            value=get_formatted_size(data['size'])
+                            value=get_formatted_size(data['size'], 1000)
                             )
 
         res_embed.add_field(name="Default Branch",
@@ -126,14 +130,17 @@ async def repo(ctx, owner_user, repo_name):
             data['contributors_url'], headers=gh_api_header, auth=gitbot_auth)
 
         if contri_res.status_code == 200:
-            contributors = ["[{0}]({1})".format(x['login'], "https://github.com/" +
-                                                x['login']) for x in contri_res.json()]
+            contributors = ["[{0}]({1})".format(
+                x['login'],
+                "https://github.com/" + x['login']
+            ) for x in contri_res.json()]
 
             if contributors:
                 res_embed.add_field(
                     name="Contributor" +
                     ("s" if len(contributors) > 1 else ""),
-                    value=" and ".join(contributors) if len(contributors) <= 2 else
+                    value=" and ".join(contributors) if
+                    len(contributors) <= 2 else
                     (", ".join(contributors[:2]) + ", and {0} others".format(
                         len(contributors) - 2)
                      )
@@ -177,9 +184,9 @@ async def repo(ctx, owner_user, repo_name):
 
         res_embed.set_footer(
             text="Created: {0} \nLast Commit: {1} \nLast Push: {2}".format(
-                await format_time(data['created_at']),
-                await format_time(data['updated_at']),
-                await format_time(data['pushed_at'])
+                format_time(data['created_at']),
+                format_time(data['updated_at']),
+                format_time(data['pushed_at'])
             )
         )
 
@@ -199,13 +206,6 @@ async def repos(ctx, username):
     """
     Returns the repos `username` owns
     """
-
-    def get_formatted_size(size):
-        if size < 1000:
-            return "{0}K".format(size)
-        elif size < 1000000:
-            return "{0}M".format(round(size/1000, 2))
-        return "{0}G".format(round(size/1000000, 2))
 
     async def get_page(n):
         params = {
@@ -236,7 +236,7 @@ async def repos(ctx, username):
                     i['html_url'],
                     i['description'],
                     "Unknown" if not i['language'] else i['language'],
-                    get_formatted_size(i['size'])
+                    get_formatted_size(i['size'], 1000)
                 )
             )
 
@@ -498,6 +498,47 @@ async def followers(ctx, username):
 
 
 @gitbot.command()
+async def languages(ctx, owner_user, repo_name):
+    """
+    Returns repo languages for `repo_name` owned by GitHub user `owner_user`
+    """
+
+    url = "https://api.github.com/repos/{0}/{1}/languages".format(
+        owner_user,
+        repo_name
+    )
+    res = requests.get(url, headers=gh_api_header, auth=gitbot_auth)
+    if res.status_code == 200:
+        data = res.json()
+        res_embed = discord.Embed(
+            title="Languages used in {0}".format(repo_name),
+            url="https://github.com/{0}/{1}".format(owner_user, repo_name)
+        )
+
+        for lang, bytecount in data.items():
+            res_embed.add_field(
+                name=lang,
+                value=get_formatted_size(bytecount, 1)
+            )
+
+        if not data:
+            res_embed.add_field(
+                name="Unknown",
+                value="GitHub could not identify the languages used"
+            )
+
+    elif res.status_code == 404:
+        res_embed = discord.Embed(
+            title="Repo not found",
+            description="Repo `{0}` owned by `{1}` was not found.".format(
+                repo_name, owner_user),
+            color=0xFF0000
+        )
+
+    await ctx.send(embed=res_embed)
+
+
+@gitbot.command()
 async def user(ctx, username):
     """
     Returns information about GitHub user `username`
@@ -578,8 +619,8 @@ async def user(ctx, username):
 
         res_embed.set_footer(
             text="Created: {0} \nLast Commit: {1}".format(
-                await format_time(data['created_at']),
-                await format_time(data['updated_at'])
+                format_time(data['created_at']),
+                format_time(data['updated_at'])
             )
         )
 
