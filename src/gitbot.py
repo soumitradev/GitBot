@@ -530,7 +530,7 @@ async def user(ctx, username):
             "https://gist.github.com/" + data['login']
         ))
 
-        if data["type"] == "user":
+        if data["type"] == "User":
             res_embed.add_field(name="Followers", value="[{0}]({1})".format(
                                 data['followers'],
                                 data['html_url'] + "?tab=followers"
