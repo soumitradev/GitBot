@@ -137,13 +137,10 @@ async def repo(ctx, owner_user, repo_name):
 
             if contributors:
                 res_embed.add_field(
-                    name="Contributor" +
-                    ("s" if len(contributors) > 1 else ""),
+                    name="Contributors",
                     value=" and ".join(contributors) if
                     len(contributors) <= 2 else
-                    (", ".join(contributors[:2]) + ", and {0} others".format(
-                        len(contributors) - 2)
-                     )
+                    (", ".join(contributors[:2]) + "et al.")
                 )
         elif contri_res.status_code == 403:
             res_embed.add_field(
@@ -303,6 +300,109 @@ async def repos(ctx, username):
             current_page = min(max(1, current_page), total_pages)
             new_embed = await get_page(current_page)
             await msg.edit(embed=new_embed)
+
+
+@gitbot.command()
+async def contributors(ctx, owner_user, repo):
+    """
+    Returns the contributors of `repo` owned by `owner_user`
+    """
+    async def get_page(n, prev_embed):
+        params = {
+            "page": n,
+            "per_page": 21
+        }
+        res = requests.get(
+            url,
+            params=params,
+            headers=gh_api_header,
+            auth=gitbot_auth
+        )
+
+        if res.status_code == 403:
+            return discord.Embed(
+                title="Too many contributors",
+                description="This repo has too many contributors to show.",
+                color=0xFF0000
+            ), 0
+        if res.status_code == 404:
+            return discord.Embed(
+                title = "Repo not found",
+                description = "Repo `{0}` owned by `{1}` was not found.".format(
+                    owner_user,
+                    repo
+                ),
+                color=0xFF0000
+            ), 0
+
+        data=res.json()
+        res_embed=discord.Embed(
+            title = "Contributors to {0}".format(repo),
+            url = "https://github.com/{0}/{1}/graphs/contributors".format(
+                owner_user,
+                repo
+            )
+        )
+
+        res_embed.set_footer(text = "Page {0}".format(n))
+
+        for i in data:
+            res_embed.add_field(
+                name = i['login'],
+                value = "[Profile]({0})".format(i['html_url'])
+            )
+
+        if not data and n == 0 and not prev_embed:
+            res_embed.add_field(
+                name="None",
+                value="{0} owned by {1} has no contributors".format(
+                    repo,
+                    owner_user
+                )
+            )
+
+        elif not data and n != 0 and prev_embed:
+            res_embed = prev_embed
+
+        return res_embed, 1
+
+    url = "https://api.github.com/repos/{0}/{1}/contributors".format(
+        owner_user,
+        repo
+    )
+    prev_embed = None
+    res_embed, status = await get_page(1, prev_embed)
+    msg = await ctx.send(embed=res_embed)
+    if not status:
+        return
+    prev_embed = msg.embeds[0]
+    await msg.add_reaction("◀️")
+    await msg.add_reaction("▶️")
+    current_page = 1
+
+    while True:
+        try:
+            reaction, _user = await gitbot.wait_for(
+                'reaction_add',
+                timeout=60,
+                check=lambda reaction, user: str(reaction.emoji) in [
+                    "◀️", "▶️"] and user.id == ctx.author.id
+            )
+        except asyncio.TimeoutError:
+            timeup_embed = msg.embeds[0]
+            timeup_embed.set_footer(text="No longer accepting input")
+            timeup_embed.color = 0xFF0000
+            await msg.edit(embed=timeup_embed)
+            break
+        else:
+            if str(reaction.emoji) == "◀️":
+                current_page -= 1
+            elif str(reaction.emoji) == "▶️":
+                current_page += 1
+            current_page = max(1, current_page)
+            new_embed, status = await get_page(current_page, prev_embed)
+            await msg.edit(embed=new_embed)
+            prev_embed = new_embed
 
 
 @gitbot.command()
